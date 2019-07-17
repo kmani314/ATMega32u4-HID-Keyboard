@@ -9,4 +9,5 @@ main.cpp
 #include "usb_init.h"
 
 int main(int argc, char** argv) {
+	usb_init();
 }
