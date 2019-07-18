@@ -22,8 +22,6 @@ int usb_init() {
 	UHWCON |= (1 << UVREGE); // Enable USB Pads Regulator
 	
 	PLLCSR |= (1 << PINDIV); // Configure to use 16mHz oscillator
-	PLLFRQ |= (1 << PLLUSB); // 96mHz USB Frequency setup
-	PLLFRQ |= (1 << PLLTM1) | (1 << PLLTM0); // PLL Postscaler = 2
 
 	PLLCSR |= (1 << PLLE); // Enable PLL
 
