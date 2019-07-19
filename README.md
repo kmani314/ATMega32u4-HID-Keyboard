@@ -20,8 +20,9 @@ when the device finishes resetting the controller on USB plugin.
 #### USB Setup
 After `EORSTE`, the Control Endpoint 0 is setup to receive setup packets from the host. `UEIENX` is set to enable the Endpoint Interrupt `RXSTPI` for receiving setup packets.
 Here is a table of USB Setup packet fields (5) :
-|--- |--- |--- |--- |--- |
+
 |Offset|Field|Size|Value|Description|
+|------|-----|----|-----|-----------|
 |0|bmRequestType|1|Bit-Map|D7 Data Phase Transfer Direction
 0 = Host to Device
 	1 = Device to Host
