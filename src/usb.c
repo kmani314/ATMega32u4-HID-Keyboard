@@ -1,7 +1,8 @@
 /*
-usb_init.h
-Initialize the USB controller
+usb.c
+USB Controller initialization, device setup, 
 */
+
 #define F_CPU 16000000
 
 #include "usb_init.h"
@@ -9,11 +10,7 @@ Initialize the USB controller
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-/*
-The datasheet is wrong in that it says Endpoint 0, the control endpoint, stays configured through USB Bus Resets, such as device plug in. 
-- -
-Forum Post Identifying Problem & More Info: https://www.avrfreaks.net/forum/usb-initialization-problem
-*/
+
 
 int usb_init() {
 	
@@ -64,14 +61,15 @@ ISR(USB_GEN_vect) {
 		UEIENX = (1 << RXSTPE); // Re-enable the RXSPTE (Receive Setup Packet) Interrupt
 	
 	}
-}2
+}
 
 ISR(USB_COM_vect) {
 	UENUM = 0;
 	if(UEINTX & (1 << RXSTPI)) {
-		UEINTX &= ~(1 << RXSTPI);
-		// Setup Packet Received
 		DDRC = 0xFF;
 		PORTC = 0xFF;
+			
+		UEINTX &= ~(1 << RXSTPI); // Handshake the Interrupt
+		
 	}
 }
