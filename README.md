@@ -23,20 +23,7 @@ Here is a table of USB Setup packet fields (5) :
 
 |Offset|Field|Size|Value|Description|
 |------|-----|----|-----|-----------|
-|0|bmRequestType|1|Bit-Map|D7 Data Phase Transfer Direction
-0 = Host to Device
-	1 = Device to Host
-D6..5 Type
-	0 = Standard
-	1 = Class
-	2 = Vendor
-	3 = Reserved
-D4..0 Recipient
-	0 = Device
-	1 = Interface
-	2 = Endpoint
-	3 = Other
-4..31 = Reserved|
+|0|bmRequestType|1|Bit-Map|Request Device Info|
 |1|bRequest|1|Value|Request|
 |2|wValue|2|Value|Value|
 |4|wIndex|2|Index or Offset|Index|
