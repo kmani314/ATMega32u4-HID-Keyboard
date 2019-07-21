@@ -1,5 +1,5 @@
 ## ATMega32u4 HID Keyboard
-###### Board Project - Krishna Mani
+###### Board Project 2019 - Krishna Mani
 This is software for ATMegau32u4 or compatible AVR hardware USB chips that implements a standard-complying HID keyboard using only AVR-LIBC.
 
 The following documents were used for reference:
@@ -10,6 +10,7 @@ The following documents were used for reference:
 4. https://www.avrfreaks.net/forum/help-properly-initializing-usb-hardware-atmega32u4
 5. https://www.beyondlogic.org/usbnutshell/usb1.shtml
 6. http://ww1.microchip.com/downloads/en/devicedoc/atmel-7766-8-bit-avr-atmega16u4-32u4_datasheet.pdf
+7. https://github.com/arduino/ArduinoCore-avr/blob/master/cores/arduino/USBCore.cpp
 
 ## Code Explanation 
 #### Initializing the USB Interface
