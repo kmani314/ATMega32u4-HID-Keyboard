@@ -17,7 +17,7 @@ USB Controller initialization, device setup,
 */
 static const uint8_t PROGMEM device_descriptor[] = { // Stored in PROGMEM (Program Memory) Flash, freeing up some SRAM where variables are usually stored
 	18, // bLength - The total size of the descriptor 
-	1, // bDescriptorType - The type of descriptor
+	1, // bDescriptorType - The type of descriptor - 1 is device
 	0x00, 0x02, // bcdUSB - The USB protcol supported - Refer to USB 2.0 Chapter 9.6.1
 	0, // bDeviceClass - The Device Class, 0 indicating that the HID interface will specify it
 	0, // bDeviceSubClass - 0, HID will specify
@@ -31,13 +31,38 @@ static const uint8_t PROGMEM device_descriptor[] = { // Stored in PROGMEM (Progr
 	1 // bNumConfigurations - The number of configurations of the device, most devices only have one
 };
 
+/*  HID Descriptor - The descriptor that gives information about the HID device
+	Specification: Device Class Definition for Human Interface Devices (HID) 6/27/2001 Appendix B - Keyboard Protocol Specification
+
+*/
 static const uint8_t PROGMEM keyboard_HID_descriptor[] = {
 	
-}
+};
 
+/*  Configuration Descriptor - The descriptor that gives information about the device conifguration(s) and how to select them
+	Specification: USB 2.0 (April 27, 2000) Chapter 9 Table 9-10
+
+*/
 static const uint8_t PROGMEM configuration_descriptor[] = {
 	9, // bLength
-	2, // bDescriptorType
+	2, // bDescriptorType - 2 is device
+	TOTAL_DEVICE_LENGTH, TOTAL_DEVICE_LENGTH, // wTotalLength - The total length of the descriptor tree
+	1, // bNumInterfaces - 1 Interface
+	1, // bConfigurationValue 
+	0, // iConfiguration - We have no string descriptors
+	0x80, // bmAttributes - Set the device power source 
+	50, // bMaxPower - 50 x 2mA units = 100mA max power consumption
+	// Refer to Table 9-10 for the descriptor structure - Configuration Descriptors have interface descriptors, interface descriptors have endpoint descriptors along with a special HID descriptor
+	9, // bLength
+	4, // bDescriptorType - 4 is interface
+	0, // bInterfaceNumber - This is the 0th and only interface
+	0, // bAlternateSetting - There are no alternate settings
+	1, // bNumEndpoints - This interface only uses one endpoint
+	0x03, // bInterfaceClass - 0x03 (specified by USB-IF) is the interface class code for HID
+	0x01, // bInterfaceSubClass - 1 (specified by USB-IF) is the constant for the boot subclass - this keyboard can communicate with the BIOS, but is limited to 6KRO, as are most keyboards
+	0x01, // bInterfaceProtocol - 0x01 (specified by USB-IF) is the protcol code for keyboards
+	0, // iInterface - There are no string descriptors for this
+	
 };
 
 int usb_init() {
