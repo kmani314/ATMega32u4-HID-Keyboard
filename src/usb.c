@@ -33,10 +33,41 @@ static const uint8_t PROGMEM device_descriptor[] = { // Stored in PROGMEM (Progr
 
 /*  HID Descriptor - The descriptor that gives information about the HID device
 	Specification: Device Class Definition for Human Interface Devices (HID) 6/27/2001 Appendix B - Keyboard Protocol Specification
-
+	This descriptor was written referring to the example descriptor in table E.6
 */
 static const uint8_t PROGMEM keyboard_HID_descriptor[] = {
-	
+	0x05, 0x01, // Usage Page - Generic Desktop - HID Spec Appendix E E.6 - The values for the HID tags are not clearly listed anywhere really, so this table is very useful
+	0x09, 0x06, // Usage - Keyboard
+	0xA1, 0x01, // Collection - Application
+	0x05, 0x07, // Usage Page - Key Codes
+	0x19, 0xE0, // Usage Minimum - The bit that controls the 8 modifier characters (ctrl, command, etc)
+	0x29, 0xE7, // Usage Maximum - The end of the modifier bit (0xE7 - 0xE0 = 1 byte)
+	0x15, 0x00, // Logical Minimum - These keys are either not pressed or pressed, 0 or 1
+	0x25, 0x01, // Logical Maximum - Pressed state == 1
+	0x75, 0x01, // Report Size - The size of the IN report to the host
+	0x95, 0x08, // Report Count - The number of keys in the report
+	0x81, 0x02, // Input - These are variable inputs
+	0x95, 0x01, // Report Count - 1
+	0x75, 0x08, // Report Size - 8
+	0x81, 0x01, // This byte is reserved according to the spec
+	0x95, 0x05, // Report Count - This is for the keyboard LEDs
+	0x75, 0x01, // Report Size
+	0x05, 0x08, // Usage Page for LEDs
+	0x19, 0x01, // Usage minimum for LEDs
+	0x29, 0x05, // Usage maximum for LEDs
+	0x91, 0x02, // Output - This is for a host output to the keyboard for the status of the LEDs
+	0x95, 0x01, // Padding for the report so that it is at least 1 byte
+	0x75, 0x03, // Padding
+	0x91, 0x01, // Output - Constant for padding
+	0x95, 0x06, // Report Count - For the keys
+	0x75, 0x08, // Report Size - For the keys
+	0x15, 0x00, // Logical Minimum
+	0x25, 0x65, // Logical Maximum
+	0x05, 0x07, // Usage Page - Key Codes
+	0x19, 0x00, // Usage Minimum - 0
+	0x29, 0x65, // Usage Maximum - 101
+	0x81, 0x00, // Input - Data, Array
+	0xC0 // End collection
 };
 
 /*  Configuration Descriptor - The descriptor that gives information about the device conifguration(s) and how to select them
@@ -128,7 +159,7 @@ ISR(USB_COM_vect) {
 		uint16_t wIndex = UEDATX | (UEDATX << 8);
 		uint16_t wLength = UEDATX | (UEDATX << 8);
 
-		UEINTX &= ~((1 << RXSTPI) | (1 << RXOUTI) | (TXINI)); // Handshake the Interrupts, do this after recording the packet because it also clears the endpoint banks
+		UEINTX &= ~((1 << RXSTPI) | (1 << RXOUTI) | (1 << TXINI)); // Handshake the Interrupts, do this after recording the packet because it also clears the endpoint banks
 		
 		if(bReqest == GET_DESCRIPTOR) {
 		}
