@@ -21,4 +21,7 @@ int usb_init();
 #define idVendor 0x16C0 // Teensy
 #define idProduct 0x047C // Teensy Keyboard (This isn't a real product so I don't have legitimate IDs):q
 
+#define KEYBOARD_ENDPOINT_NUM 2 // The second endpoint is the HID endpoint
+
+#define CONFIG_SIZE 34
 #endif

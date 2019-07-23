@@ -26,7 +26,7 @@ static const uint8_t PROGMEM device_descriptor[] = { // Stored in PROGMEM (Progr
 	(idVendor & 255), ((idVendor >> 8) & 255), // idVendor - Vendor ID specified by USB-IF (To fit the 2 bytes, the ID is split into least significant and most significant byte)
 	(idProduct & 255), ((idProduct >> 8) & 255), // idProduct - The Product ID specified by USB-IF - Split in the same way as idVendor
 	0, // iManufacturer - The String Descriptor that has the manufacturer name - Specified by USB 2.0 Table 9-8
-	0, // iProduct - The String Descriptor that has the product name - Specified by USB 2.0 Table 9-8
+	 0, // iProduct - The String Descriptor that has the product name - Specified by USB 2.0 Table 9-8
 	0, // iSerialNumber - The String Descriptor that has the serial number of the product - Specified by USB 2.0 Table 9-8
 	1 // bNumConfigurations - The number of configurations of the device, most devices only have one
 };
@@ -74,10 +74,11 @@ static const uint8_t PROGMEM keyboard_HID_descriptor[] = {
 	Specification: USB 2.0 (April 27, 2000) Chapter 9 Table 9-10
 
 */
+
 static const uint8_t PROGMEM configuration_descriptor[] = {
 	9, // bLength
 	2, // bDescriptorType - 2 is device
-	TOTAL_DEVICE_LENGTH, TOTAL_DEVICE_LENGTH, // wTotalLength - The total length of the descriptor tree
+	(CONFIG_SIZE & 255), ((CONFIG_SIZE >> 8) & 255), // wTotalLength - The total length of the descriptor tree
 	1, // bNumInterfaces - 1 Interface
 	1, // bConfigurationValue 
 	0, // iConfiguration - We have no string descriptors
@@ -93,7 +94,21 @@ static const uint8_t PROGMEM configuration_descriptor[] = {
 	0x01, // bInterfaceSubClass - 1 (specified by USB-IF) is the constant for the boot subclass - this keyboard can communicate with the BIOS, but is limited to 6KRO, as are most keyboards
 	0x01, // bInterfaceProtocol - 0x01 (specified by USB-IF) is the protcol code for keyboards
 	0, // iInterface - There are no string descriptors for this
-	
+	// HID Descriptor - Refer to E.4 HID Spec
+	9, // bLength
+	0x21, // bDescriptorType - 0x21 is HID
+	0x11, 0x01, // bcdHID - HID Class Specification 1.11
+	0, // bCountryCode
+	1, // bNumDescriptors - Number of HID descriptors
+	0x22, // bDescriptorType - Type of descriptor
+	sizeof(keyboard_HID_descriptor), 0, // wDescriptorLength
+	// Endpoint Descriptor - Example can be found in the HID spec table E.5
+	7, // bLength
+	0x05, // bDescriptorType
+	KEYBOARD_ENDPOINT_NUM | 0x80, // Set keyboard endpoint to IN endpoint, refer to table
+	0x03, // bmAttributes - Set endpoint to interrupt
+	8, 0, // wMaxPacketSize - The size of the keyboard banks
+	0x01 // wInterval - Poll for new data 1000/s, or once every ms
 };
 
 int usb_init() {
