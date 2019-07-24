@@ -5,7 +5,7 @@ USB Controller initialization, device setup,
 
 #define F_CPU 16000000
 
-#include "usb_init.h"
+#include "usb.h"
 #include "avr/io.h"
 #include <avr/interrupt.h>
 #include <util/delay.h>
@@ -132,8 +132,6 @@ int usb_init() {
 	UDIEN |= (1 << EORSTE) | (1 << SOFE); // Re-enable the EORSTE (End Of Reset) Interrupt so we know when we can configure the control endpoint
 	
 	sei(); // Global Interrupt Enable
-
-	return 0;
 }
 
 bool get_usb_config_status() {
@@ -165,18 +163,48 @@ ISR(USB_GEN_vect) {
 ISR(USB_COM_vect) {
 	UENUM = 0;
 	if(UEINTX & (1 << RXSTPI)) {
-		DDRC = 0xFF;
-		PORTC = 0xFF; // LED indicator for setup
-
 		uint8_t bmRequestType = UEDATX; // UEDATX is FIFO; see table in README
 		uint8_t bRequest = UEDATX;
 		uint16_t wValue = UEDATX | (UEDATX << 8); 
 		uint16_t wIndex = UEDATX | (UEDATX << 8);
 		uint16_t wLength = UEDATX | (UEDATX << 8);
-
+		
+		DDRC = 0xFF;
+		
 		UEINTX &= ~((1 << RXSTPI) | (1 << RXOUTI) | (1 << TXINI)); // Handshake the Interrupts, do this after recording the packet because it also clears the endpoint banks
 		
-		if(bReqest == GET_DESCRIPTOR) {
+		if(bRequest == GET_DESCRIPTOR) {
+			PORTC = 0xFF;
+			return;
+			// The Host is trying to get the device descriptor tree to enumerate the device
+		}
+		
+		if(bRequest == SET_CONFIGURATION && bmRequestType == 0) { // Refer to USB Spec 9.4.7 - This is the configuration request to place the device into address mode
+			usb_config_status = wValue;
+			UEINTX &= ~(1 << TXINI);
+			UENUM = KEYBOARD_ENDPOINT_NUM;
+			UECONX = 1;
+			UECFG0X = 0b11000001; // EPTYPE Interrupt IN
+			UECFG1X = 0b00000110; // Dual Bank Endpoint, 8 Bytes, allocate memory
+			UERST = 1; // Reset the Endpoint
+			UERST = 0;	
+			return;
+			
+		}
+		
+		if(bRequest == SET_ADDRESS) {
+			UEINTX &= ~(1 << TXINI);
+			while(!(UEINTX & (1 << TXINI))); // Wait until the banks are ready to be filled
+			
+			UDADDR = wValue | (1 << ADDEN); // Set the device address
+			return;
+		}
+
+		if(bRequest == GET_CONFIGURATION && bmRequestType == 0x80) { // GET_CONFIGURATION is the host trying to get the current config status of the device
+			while(!(UEINTX & (1 << TXINI))); // Wait until the banks are ready to be filled
+			UEDATX = usb_config_status;
+			UEINTX &= ~(1 << TXINI);
+			return;
 		}
 	}
 }

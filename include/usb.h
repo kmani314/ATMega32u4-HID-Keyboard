@@ -1,10 +1,10 @@
 /*
-usb_init.h
+usb.h
 */
-#ifndef USB_INIT_H
-#define USB_INIT_H
-
-static volatile bool usb_config_status;
+#ifndef USB_H
+#define USB_H
+#include <stdbool.h>
+static volatile bool usb_config_status = 0;
 int usb_init();
 
 #define GET_STATUS 0x00
@@ -19,7 +19,7 @@ int usb_init();
 #define SET_INTERFACE 0x0B
 
 #define idVendor 0x16C0 // Teensy
-#define idProduct 0x047C // Teensy Keyboard (This isn't a real product so I don't have legitimate IDs):q
+#define idProduct 0x047C // Teensy Keyboard (This isn't a real product so I don't have legitimate IDs)
 
 #define KEYBOARD_ENDPOINT_NUM 2 // The second endpoint is the HID endpoint
 
