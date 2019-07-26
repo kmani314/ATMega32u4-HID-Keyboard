@@ -24,4 +24,5 @@ int usb_init();
 #define KEYBOARD_ENDPOINT_NUM 2 // The second endpoint is the HID endpoint
 
 #define CONFIG_SIZE 34
+#define HID_OFFSET 18
 #endif
