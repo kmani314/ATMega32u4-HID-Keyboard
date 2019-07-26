@@ -82,7 +82,7 @@ static const uint8_t configuration_descriptor[] PROGMEM = {
 	1, // bNumInterfaces - 1 Interface
 	1, // bConfigurationValue 
 	0, // iConfiguration - We have no string descriptors
-	0x80, // bmAttributes - Set the device power source 
+	0xC0, // bmAttributes - Set the device power source 
 	50, // bMaxPower - 50 x 2mA units = 100mA max power consumption
 	// Refer to Table 9-10 for the descriptor structure - Configuration Descriptors have interface descriptors, interface descriptors have endpoint descriptors along with a special HID descriptor
 	9, // bLength
@@ -124,7 +124,7 @@ int usb_init() {
 	USBCON |= (1 << USBE) | (1 << OTGPADE); // Enable USB Controller and USB power pads
 	USBCON &= ~(1 << FRZCLK); // Unfreeze the clock
 
-	UDCON = 0; //(1 << LSM);
+	UDCON = 0; // FULL SPEED MODE
 	
 	USBCON &= ~(1 << DETACH); // Connect
 	UDIEN |= (1 << EORSTE) | (1 << SOFE); // Re-enable the EORSTE (End Of Reset) Interrupt so we know when we can configure the control endpoint
@@ -176,19 +176,17 @@ ISR(USB_COM_vect) {
 		DDRC = 0xFF;
 		
 		UEINTX &= ~((1 << RXSTPI) | (1 << RXOUTI) | (1 << TXINI)); // Handshake the Interrupts, do this after recording the packet because it also clears the endpoint banks
-		PORTC = 0xFF;	
 		if(bRequest == GET_DESCRIPTOR) {
 			// The Host is requesting a descriptor to enumerate the device
 			uint8_t* descriptor;
 			uint8_t descriptor_length;
 			
-			PORTC = 0xFF;
 			if(wValue == 0x0100) { // Is the host requesting a device descriptor?
 				descriptor = device_descriptor; 
 				descriptor_length = pgm_read_byte(descriptor);
 			} else if(wValue == 0x0200) { // Is it asking for a configuration descriptor?
 				descriptor = configuration_descriptor;
-				descriptor_length = pgm_read_byte(descriptor);
+				descriptor_length = CONFIG_SIZE; // Configuration descriptor is comprised of many different descriptors; the length is more than bLength
 			} else if(wValue == 0x2100) { // Is it asking for a HID Report Descriptor?
 				descriptor = configuration_descriptor + HID_OFFSET;
 				descriptor_length = pgm_read_byte(descriptor);
@@ -229,7 +227,7 @@ ISR(USB_COM_vect) {
 			UECONX = 1;
 			UECFG0X = 0b11000001; // EPTYPE Interrupt IN
 			UECFG1X = 0b00000110; // Dual Bank Endpoint, 8 Bytes, allocate memory
-			UERST = 1; // Reset the Endpoint
+			UERST = 0x1E; // Reset all of the endpoints
 			UERST = 0;	
 			return;
 			
@@ -256,6 +254,6 @@ ISR(USB_COM_vect) {
 			UEINTX &= ~(1 << TXINI);
 			return;
 		}
-		PORTC = 0xFF;
+		
 	}
 }
