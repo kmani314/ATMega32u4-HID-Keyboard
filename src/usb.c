@@ -4,7 +4,6 @@ USB Controller initialization, device setup,
 */
 
 #define F_CPU 16000000
-
 #include "usb.h"
 #include "avr/io.h"
 #include <avr/interrupt.h>
@@ -15,7 +14,7 @@ USB Controller initialization, device setup,
 	Specification: USB 2.0 (April 27, 2000) Chapter 9 Table 9-5
 
 */
-static const uint8_t PROGMEM device_descriptor[] = { // Stored in PROGMEM (Program Memory) Flash, freeing up some SRAM where variables are usually stored
+static const uint8_t device_descriptor[] PROGMEM = { // Stored in PROGMEM (Program Memory) Flash, freeing up some SRAM where variables are usually stored
 	18, // bLength - The total size of the descriptor 
 	1, // bDescriptorType - The type of descriptor - 1 is device
 	0x00, 0x02, // bcdUSB - The USB protcol supported - Refer to USB 2.0 Chapter 9.6.1
@@ -35,7 +34,7 @@ static const uint8_t PROGMEM device_descriptor[] = { // Stored in PROGMEM (Progr
 	Specification: Device Class Definition for Human Interface Devices (HID) 6/27/2001 Appendix B - Keyboard Protocol Specification
 	This descriptor was written referring to the example descriptor in table E.6
 */
-static const uint8_t PROGMEM keyboard_HID_descriptor[] = {
+static const uint8_t keyboard_HID_descriptor[] PROGMEM = {
 	0x05, 0x01, // Usage Page - Generic Desktop - HID Spec Appendix E E.6 - The values for the HID tags are not clearly listed anywhere really, so this table is very useful
 	0x09, 0x06, // Usage - Keyboard
 	0xA1, 0x01, // Collection - Application
@@ -72,10 +71,11 @@ static const uint8_t PROGMEM keyboard_HID_descriptor[] = {
 
 /*  Configuration Descriptor - The descriptor that gives information about the device conifguration(s) and how to select them
 	Specification: USB 2.0 (April 27, 2000) Chapter 9 Table 9-10
-
+	Note: The reason the descriptors are structured the way they are is to better show the tree structure of the descriptors; if the HID inteface descriptor was separate from the configuration
+	descriptor, we wouldn't need the HID_OFFSET, but that would imply that the descriptors are separate entities when they are really dependent on each other
 */
 
-static const uint8_t PROGMEM configuration_descriptor[] = {
+static const uint8_t configuration_descriptor[] PROGMEM = {
 	9, // bLength
 	2, // bDescriptorType - 2 is device
 	(CONFIG_SIZE & 255), ((CONFIG_SIZE >> 8) & 255), // wTotalLength - The total length of the descriptor tree
@@ -112,26 +112,25 @@ static const uint8_t PROGMEM configuration_descriptor[] = {
 };
 
 int usb_init() {
-	
+		
 	cli(); // Global Interrupt Disable
 	
 	UHWCON |= (1 << UVREGE); // Enable USB Pads Regulator
 	
-	PLLCSR |= (1 << PINDIV); // Configure to use 16mHz oscillator
-
-	PLLCSR |= (1 << PLLE); // Enable PLL
+	PLLCSR |= 0x12; // Configure to use 16mHz oscillator
 
 	while(!(PLLCSR & (1 << PLOCK))); // Wait for PLL Lock to be achieved
 
 	USBCON |= (1 << USBE) | (1 << OTGPADE); // Enable USB Controller and USB power pads
 	USBCON &= ~(1 << FRZCLK); // Unfreeze the clock
 
-	UDCON = (1 << LSM); // High Speed Mode (Full 12mbps)
-
+	UDCON = 0; //(1 << LSM);
+	
 	USBCON &= ~(1 << DETACH); // Connect
 	UDIEN |= (1 << EORSTE) | (1 << SOFE); // Re-enable the EORSTE (End Of Reset) Interrupt so we know when we can configure the control endpoint
-	
+	usb_config_status = 0;
 	sei(); // Global Interrupt Enable
+	return 0;
 }
 
 bool get_usb_config_status() {
@@ -139,17 +138,19 @@ bool get_usb_config_status() {
 }
 
 ISR(USB_GEN_vect) {
-	if(UDINT & (1 << EORSTI)) {// If end of reset interrupt	
-		UDINT = 0;
-
+	uint8_t udint_temp = UDINT;
+	UDINT = 0;
+	if(udint_temp & (1 << EORSTI)) {// If end of reset interrupt	
 		// Configure Control Endpoint
 		UENUM = 0; // Select Endpoint 0, the default control endpoint
 		UECONX = (1 << EPEN); // Enable the Endpoint
 		UECFG0X = 0; // Control Endpoint, OUT direction for control endpoint
-		UECFG1X |= 0x32; // 64 byte endpoint, 1 bank, allocate the memory
-		
+		UECFG1X |= 0x22; // 32 byte endpoint, 1 bank, allocate the memory
+		usb_config_status = 0;
+
 		if(!(UESTA0X & (1 << CFGOK))) { // Check if endpoint configuration was successful
 			return;	
+		
 		}
 			
 		UERST = 1; // Reset Endpoint
@@ -165,18 +166,60 @@ ISR(USB_COM_vect) {
 	if(UEINTX & (1 << RXSTPI)) {
 		uint8_t bmRequestType = UEDATX; // UEDATX is FIFO; see table in README
 		uint8_t bRequest = UEDATX;
-		uint16_t wValue = UEDATX | (UEDATX << 8); 
-		uint16_t wIndex = UEDATX | (UEDATX << 8);
-		uint16_t wLength = UEDATX | (UEDATX << 8);
-		
+		uint16_t wValue = UEDATX;
+		wValue |= UEDATX << 8;
+		uint16_t wIndex = UEDATX;
+		wIndex |= UEDATX << 8;
+		uint16_t wLength = UEDATX;
+		wLength |= UEDATX << 8;
+
 		DDRC = 0xFF;
 		
 		UEINTX &= ~((1 << RXSTPI) | (1 << RXOUTI) | (1 << TXINI)); // Handshake the Interrupts, do this after recording the packet because it also clears the endpoint banks
-		
+		PORTC = 0xFF;	
 		if(bRequest == GET_DESCRIPTOR) {
+			// The Host is requesting a descriptor to enumerate the device
+			uint8_t* descriptor;
+			uint8_t descriptor_length;
+			
 			PORTC = 0xFF;
+			if(wValue == 0x0100) { // Is the host requesting a device descriptor?
+				descriptor = device_descriptor; 
+				descriptor_length = pgm_read_byte(descriptor);
+			} else if(wValue == 0x0200) { // Is it asking for a configuration descriptor?
+				descriptor = configuration_descriptor;
+				descriptor_length = pgm_read_byte(descriptor);
+			} else if(wValue == 0x2100) { // Is it asking for a HID Report Descriptor?
+				descriptor = configuration_descriptor + HID_OFFSET;
+				descriptor_length = pgm_read_byte(descriptor);
+			} else if(wValue == 0x2200) {
+				descriptor = keyboard_HID_descriptor;
+				descriptor_length = sizeof(keyboard_HID_descriptor);
+			} else {
+				
+				UECONX |= (1 << STALLRQ) | (1 << EPEN); // Enable the endpoint and stall, the descriptor does not exist
+				return;
+			}
+				
+			uint8_t request_length = wLength > 255 ? 255 : wLength; // Our endpoint is only so big; the USB Spec says to truncate the response if the size exceeds the size of the endpoint
+			
+			descriptor_length = request_length > descriptor_length ? descriptor_length : request_length; // Truncate to descriptor length at most 
+			
+			while(descriptor_length > 0) {
+				while(!(UEINTX & (1 << TXINI))); // Wait for banks to be ready for data transmission
+				if(UEINTX & (1 << RXOUTI)) return; // If there is another packet, exit to handle it
+				
+				uint8_t thisPacket = descriptor_length > 32 ? 32 : descriptor_length; // Make sure that the packet we are getting is not too big to fit in the endpoint
+				
+				for(int i = 0; i < thisPacket; i++) {
+					UEDATX = pgm_read_byte(descriptor + i); // Send the descriptor over UEDATX, use pgmspace functions because the descriptors are stored in flash
+				}
+				
+				descriptor_length -= thisPacket;
+				descriptor += thisPacket;
+				UEINTX &= ~(1 << TXINI);
+			}	
 			return;
-			// The Host is trying to get the device descriptor tree to enumerate the device
 		}
 		
 		if(bRequest == SET_CONFIGURATION && bmRequestType == 0) { // Refer to USB Spec 9.4.7 - This is the configuration request to place the device into address mode
@@ -206,5 +249,13 @@ ISR(USB_COM_vect) {
 			UEINTX &= ~(1 << TXINI);
 			return;
 		}
+
+		if(bRequest = GET_STATUS) {
+			while(!(UEINTX & (1 << TXINI))); 
+			UEDATX = 0;
+			UEINTX &= ~(1 << TXINI);
+			return;
+		}
+		PORTC = 0xFF;
 	}
 }
