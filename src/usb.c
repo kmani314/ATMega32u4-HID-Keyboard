@@ -24,8 +24,9 @@ static const uint8_t device_descriptor[] PROGMEM = { // Stored in PROGMEM (Progr
 	32, // bMaxPacketSize0 - 32 byte packet size; control endpoint was configured in UECFG1X to be 32 bytes
 	(idVendor & 255), ((idVendor >> 8) & 255), // idVendor - Vendor ID specified by USB-IF (To fit the 2 bytes, the ID is split into least significant and most significant byte)
 	(idProduct & 255), ((idProduct >> 8) & 255), // idProduct - The Product ID specified by USB-IF - Split in the same way as idVendor
+	0x00, 0x01, // bcdDevice - Device Version Number
 	0, // iManufacturer - The String Descriptor that has the manufacturer name - Specified by USB 2.0 Table 9-8
-	 0, // iProduct - The String Descriptor that has the product name - Specified by USB 2.0 Table 9-8
+	0, // iProduct - The String Descriptor that has the product name - Specified by USB 2.0 Table 9-8
 	0, // iSerialNumber - The String Descriptor that has the serial number of the product - Specified by USB 2.0 Table 9-8
 	1 // bNumConfigurations - The number of configurations of the device, most devices only have one
 };
@@ -133,6 +134,39 @@ int usb_init() {
 	return 0;
 }
 
+int send_keypress(uint8_t key, uint8_t mod) {
+	keyboard_pressed_keys[0] = key;
+	keyboard_modifier = mod;
+	PORTC = 0xFF;
+	if(usb_send() < 0) return -1;
+	keyboard_pressed_keys[0] = 0;
+	keyboard_modifier = 0;
+	if(usb_send() < 0) return -1;
+	return 0;
+}
+
+int usb_send() {
+	if(!usb_config_status) return -1; // Why are you even trying
+	cli();	
+	// We have to check for timeout, look up USB SOF (Start of Frame) Packets - UDFNUML is the SOF register
+	UENUM = KEYBOARD_ENDPOINT_NUM;
+	uint8_t timeout = UDFNUML + 50; // Timeout for FNUM (Frame Number) section of SOF Packet
+	
+	while(!(UEINTX & (1 << RWAL))); // Wait for banks to be ready
+	sei();
+	if(!usb_config_status || UDFNUML >= timeout) return -1; // USB is either offline or we missed the timeout
+	
+	UEDATX = keyboard_modifier;
+	
+	for(int i = 0; i < 6; i++) {
+		UEDATX = keyboard_pressed_keys[i];	
+	}
+
+	UEINTX = 0b00111010;
+	current_idle = 0;
+	return 0;
+}
+
 bool get_usb_config_status() {
 	return usb_config_status;
 }
@@ -140,7 +174,8 @@ bool get_usb_config_status() {
 ISR(USB_GEN_vect) {
 	uint8_t udint_temp = UDINT;
 	UDINT = 0;
-	if(udint_temp & (1 << EORSTI)) {// If end of reset interrupt	
+
+	if(udint_temp & (1 << EORSTI)) { // If end of reset interrupt	
 		// Configure Control Endpoint
 		UENUM = 0; // Select Endpoint 0, the default control endpoint
 		UECONX = (1 << EPEN); // Enable the Endpoint
@@ -157,7 +192,26 @@ ISR(USB_GEN_vect) {
 		UERST = 0;
 		
 		UEIENX = (1 << RXSTPE); // Re-enable the RXSPTE (Receive Setup Packet) Interrupt
-	
+		return;	
+	}
+
+	if((udint_temp & (1 << SOFI)) && usb_config_status) { // Check for Start Of Frame Interrupt and correct usb configuration, send keypress if a keypress event has not been sent through usb_send
+		this_interrupt++;
+		if(keyboard_idle_value && (this_interrupt & 3) == 0) { // Scaling by four, trying to save memory
+			UENUM = KEYBOARD_ENDPOINT_NUM;
+			if(UEINTX & (1 << RWAL)) { // Check if banks are writable
+				current_idle++;
+				if(current_idle == keyboard_idle_value) { // Have we reached the idle threshold?
+					current_idle = 0;
+					UEDATX = keyboard_modifier;
+					UEDATX = 0;
+					for(int i = 0; i < 6; i++) {
+						UEDATX = keyboard_pressed_keys[i];
+					}
+					UEINTX = 0b00111010; 
+				}
+			}
+		}
 	}
 }
 
@@ -194,7 +248,7 @@ ISR(USB_COM_vect) {
 				descriptor = keyboard_HID_descriptor;
 				descriptor_length = sizeof(keyboard_HID_descriptor);
 			} else {
-				
+				PORTC = 0xFF;
 				UECONX |= (1 << STALLRQ) | (1 << EPEN); // Enable the endpoint and stall, the descriptor does not exist
 				return;
 			}
@@ -248,8 +302,9 @@ ISR(USB_COM_vect) {
 			return;
 		}
 
-		if(bRequest = GET_STATUS) {
+		if(bRequest == GET_STATUS) {
 			while(!(UEINTX & (1 << TXINI))); 
+			UEDATX = 0;
 			UEDATX = 0;
 			UEINTX &= ~(1 << TXINI);
 			return;
@@ -290,25 +345,27 @@ ISR(USB_COM_vect) {
 					while(!(UEINTX & (1 << RXOUTI))); // This is the opposite of the TXINI one, we are waiting until the banks are ready for reading instead of for writing
 					keyboard_leds = UEDATX;
 
-					UEINTX &= ~((1 << RXOUTI) | (1 << TXINI)); // Send ACK and clear TX bit
+					UEINTX &= ~(1 << TXINI); // Send ACK and clear TX bit
+					UEINTX &= ~(1 << RXOUTI);
 					return;
 				}
 				if(bRequest == SET_IDLE) {
 					keyboard_idle_value = (wValue >> 8); // wValue is 16 bits, keyboard_idle_value is 8 bits
 					current_idle = 0;
 
-					UEINTX &= ~((1 << RXOUTI) | (1 << TXINI)); // Send ACK and clear TX bit
+					UEINTX &= ~(1 << TXINI); // Send ACK and clear TX bit
 					return;
 				}
 				if(bRequest == SET_PROTOCOL) { // This request is only mandatory for boot devices, and this is a boot device
 					keyboard_protocol = wValue; // Nobody cares what happens to this, arbitrary cast from 16 bit to 8 bit doesn't matter
 
-					UEINTX &= ~((1 << RXOUTI) | (1 << TXINI)); // Send ACK and clear TX bit
+					UEINTX &= ~(1 << TXINI); // Send ACK and clear TX bit
 					return;
 				} 
 			}
 		}
 	}
+	PORTC = 0xFF;
 	UECONX |= (1 << STALLRQ) | (1 << EPEN); // The host made an invalid request or there was an error with one of the request parameters
 }
 

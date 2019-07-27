@@ -10,5 +10,8 @@ main.cpp
 
 int main(int argc, char** argv) {
 	usb_init();
-	while(1); // temporary to make sure it doesn't exit
+	while(!(get_usb_config_status));
+	send_keypress(5, 0);
+
+	while(1); // Wait a bit
 }
