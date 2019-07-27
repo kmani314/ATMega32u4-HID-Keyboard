@@ -254,6 +254,61 @@ ISR(USB_COM_vect) {
 			UEINTX &= ~(1 << TXINI);
 			return;
 		}
-		
+
+		if(wIndex == 0) { // Is this a request to the keyboard interface for HID class-specific requests?
+			if(bmRequestType == 0xA1) { // GET Requests - Refer to the table in HID Specification 7.2 - This byte specifies the data direction of the packet. Unnecessary since bRequest is unique, but it makes the code clearer 
+				if(bRequest == GET_REPORT) { // Get the current HID report
+					while(!(UEINTX & (1 << TXINI))); // Wait for the banks to be ready for transmission
+					UEDATX = keyboard_modifier;
+					
+					for(int i = 0; i < 6; i++) {
+						UEDATX = keyboard_pressed_keys[i]; // According to the spec, this method of getting the report is not used for device polling, although we still have to implement the response
+					}
+					UEINTX &= ~(1 << TXINI);
+					return;
+				}
+				if(bRequest == GET_IDLE) { 
+					while(!(UEINTX & (1 << TXINI)));
+					
+					UEDATX = keyboard_idle_value;
+
+					UEINTX &= ~(1 << TXINI);
+					return;
+				}
+				if(bRequest == GET_PROTOCOL) {
+					while(!(UEINTX & (1 << TXINI)));
+					
+					UEDATX = keyboard_protocol;
+
+					UEINTX &= ~(1 << TXINI);
+					return;
+				}
+			}
+
+			if(bmRequestType == 0x21) { // SET Requests - Host-to-device data direction
+				if(bRequest == SET_REPORT) {
+					while(!(UEINTX & (1 << RXOUTI))); // This is the opposite of the TXINI one, we are waiting until the banks are ready for reading instead of for writing
+					keyboard_leds = UEDATX;
+
+					UEINTX &= ~((1 << RXOUTI) | (1 << TXINI)); // Send ACK and clear TX bit
+					return;
+				}
+				if(bRequest == SET_IDLE) {
+					keyboard_idle_value = (wValue >> 8); // wValue is 16 bits, keyboard_idle_value is 8 bits
+					current_idle = 0;
+
+					UEINTX &= ~((1 << RXOUTI) | (1 << TXINI)); // Send ACK and clear TX bit
+					return;
+				}
+				if(bRequest == SET_PROTOCOL) { // This request is only mandatory for boot devices, and this is a boot device
+					keyboard_protocol = wValue; // Nobody cares what happens to this, arbitrary cast from 16 bit to 8 bit doesn't matter
+
+					UEINTX &= ~((1 << RXOUTI) | (1 << TXINI)); // Send ACK and clear TX bit
+					return;
+				} 
+			}
+		}
 	}
+	UECONX |= (1 << STALLRQ) | (1 << EPEN); // The host made an invalid request or there was an error with one of the request parameters
 }
+
