@@ -1,6 +1,6 @@
 /*
 usb.c
-USB Controller initialization, device setup, 
+USB Controller initialization, device setup, and HID interrupt routines 
 */
 
 #define F_CPU 16000000
@@ -137,7 +137,6 @@ int usb_init() {
 int send_keypress(uint8_t key, uint8_t mod) {
 	keyboard_pressed_keys[0] = key;
 	keyboard_modifier = mod;
-	PORTC = 0xFF;
 	if(usb_send() < 0) return -1;
 	keyboard_pressed_keys[0] = 0;
 	keyboard_modifier = 0;
@@ -148,22 +147,18 @@ int send_keypress(uint8_t key, uint8_t mod) {
 int usb_send() {
 	if(!usb_config_status) return -1; // Why are you even trying
 	cli();	
-	// We have to check for timeout, look up USB SOF (Start of Frame) Packets - UDFNUML is the SOF register
 	UENUM = KEYBOARD_ENDPOINT_NUM;
-	uint8_t timeout = UDFNUML + 50; // Timeout for FNUM (Frame Number) section of SOF Packet
 	
 	while(!(UEINTX & (1 << RWAL))); // Wait for banks to be ready
-	sei();
-	if(!usb_config_status || UDFNUML >= timeout) return -1; // USB is either offline or we missed the timeout
-	
 	UEDATX = keyboard_modifier;
-	
+	UEDATX = 0;	
 	for(int i = 0; i < 6; i++) {
 		UEDATX = keyboard_pressed_keys[i];	
 	}
 
 	UEINTX = 0b00111010;
 	current_idle = 0;
+	sei();
 	return 0;
 }
 

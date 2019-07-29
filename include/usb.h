@@ -18,6 +18,7 @@ static uint8_t keyboard_leds; // You don't need to use this if you don't want to
 int usb_init();
 bool get_usb_config_status();
 int usb_send();
+int send_keypress(uint8_t, uint8_t);
 
 #define GET_STATUS 0x00
 #define CLEAR_FEATURE 0x01
