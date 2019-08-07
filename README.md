@@ -12,29 +12,49 @@ I used these for reference when coding:
 6. http://ww1.microchip.com/downloads/en/devicedoc/atmel-7766-8-bit-avr-atmega16u4-32u4_datasheet.pdf
 7. https://github.com/arduino/ArduinoCore-avr/blob/master/cores/arduino/USBCore.cpp
 
-## Code Explanation 
-#### Initializing the USB Interface
-The USB controller is initialized according to the datasheet register descriptions. First, the PLL (Phase Locked Loop) is setup to act as the USB clock, running at 48mHz
-from a scaling of the 16mHz system clock. The register `UHWCON` enables the USB pad regulator for the USB interface, and the registers `PLLCSR`, `USBCON`, and `UDCON` are used
-to configure the PLL, USB controller enable, and USB Speed Settings, respectively. The register `UDIEN` is used to enable USB Device Interrupts, such as `EORSTE`, which triggers
-when the device finishes resetting the controller on USB plugin.
-#### USB Setup and Enumeration
-After `EORSTE`, the Control Endpoint 0 is setup to receive setup packets from the host. `UEIENX` is set to enable the Endpoint Interrupt `RXSTPI` for receiving setup packets.
-Here is a table of USB Setup packet fields (5) :
+## Electronics
+#### ATMega32u4
+I chose the ATMega32u4 for the keyboard primarily because of its hardware USB controller, which makes programming a USB application much easier than software USB emulation. Also, it supports a 16mHz clock frequency and has enough
+Digital I/O pins for the keyboard, so no multiplexing is needed. It also comes in the TQFP package, which is small enough to fit on a reasonably sized board but is also not impossible to solder by hand.
 
-|Offset|Field|Size|Value|Description|
-|------|-----|----|-----|-----------|
-|0|bmRequestType|1|Bit-Map|Request Device Info|
-|1|bRequest|1|Value|Request|
-|2|wValue|2|Value|Value|
-|4|wIndex|2|Index or Offset|Index|
-|6|wLength|2|Count|Number of bytes to transfer if there is a data phase|
-
-These values are used to determine the request type and parameters. They are read in through the FIFO register `UEDATX`. The ISR `USB_COM_vect` is triggered by interrupts in `UEINTX`. This includes the `RXSTPI` interrupt, which triggers on setup packet receive.
-On `UEINTX & (1 << RXSTPI)`, we read in the setup packet values and determine the request type. There are several types of setup requests, the first of which is the `GET_DESCRIPTOR`. First the device descriptor is sent, which also includes information about which descriptors the host is allowed to request. Then, configration, interface, HID, and endpoint descriptors are sent to fully enumerate the device. Several other setup requests and HID requests are sent to indicate to the host the protocol the device requires and device type.
-The request `SET_CONFIGURATION` is responsible for the setup of Endpoint 3, the endpoint responsible for the interrupt requests to the host to send HID reports. After this request, the device is considered fully configured except for the HID specific requests. 
-#### USBHID Reporting and Idle
-Once the device is setup fully, the `SOFE` (Start of Frame) interrupt is responsible for reporting the device state. Apart from the other methods `usb_send` and `get_keypress`, which update the HID device idle and send the report independently, the `SOFE` interrupt takes care of reporting device state when no reports are generated after an interval of `keyboard_idle_value`, which is set by the host in the HID request `SET_IDLE`.
-#### Keycode Logic
-The majority of implementations of HID keyboards use large lists of #define's to map ASCII characters on the keyboard to HID keycode values. This, however, makes it inconvenient to make keys that map to more than one keycode like macros. The arrays `keycodes[]` and `modifiers[]` are ordered in ASCII value with the HID keycode stored at the corresponding index. This makes converting arbitrarily long strings of ASCII to keycodes trivial, just casting to int and performing a lookup, making this essentially the same in terms of computational power. The `modifiers[]` array corresponds to keys that need a shift key pressed in HID keycodes, but are different codes in ASCII. It's useless when making actual layouts because you press the shift key yourself, but might be useful if you want a very specific macro. Most of these large arrays have the keyword `PROGMEM` (Program Memory). This means that they are stored in flash instead of SRAM, which is used for variables. Since SRAM is significantly more limited than flash, it makes sense to store constants in flash, which is slower but that doesn't matter too much in most cases. The descriptors are also stored in PROGMEM.
-
+## Code
+#### USB
+There are a few steps before a USB device can serve its intended purpose:
+1. The device must setup the Control Endpoint, mandated to be Endpoint #0 by the USB Spec
+2. The device must receive packets on the Control Endpoint, and respond accordingly
+In the file `usb.c`:
+The function `usb_init()` handles the initialization of the USB interface and sets `ISR(USB_COM_vect)` 
+to handle the setup of the control endpoint once the USB Interface has finished resetting (Indicated by `EORSTE`).
+Also, `ISR(USB_COM_vect)` sets `ISR(USB_GEN_vect)` to be called when setup packets are received. This is set
+through the Endpoint Interrupt Register `UEINTX` and the `RXSTPI` bit.
+The descriptors of the device tell the host information about it. The keyboard has several:
+1. Device Descriptor - Required by all devices, most basic information about the device like USB version
+2. Configuration Descriptor - Required, more specific info like number of endpoints and endpoint sizes
+3. Interface Descrpitor - Info about the USB Interface and what endpoints it uses
+4. Information about the keyboard and its protocol, specific to this device
+5. USB-HID Descriptor - Info about the USB-HID Report descriptor
+6. Endpoint descriptor - Info about the keyboard endpoints
+The host needs these descriptors to enumerate the device. It requests them through specific requests in the 
+setup packets.
+In the ISR `USB_GEN_vect`:
+The data in the endpoint selected by `UENUM` is stored in FIFO fashion in the register `UEDATX`.
+The setup packet is loaded into variables based on the packet fields' length and order.
+Based on the values of `bRequest` and `bmRequestType`, you can figure out what the host wants. The request
+`GET_DESCRIPTOR` is what the host sends when it wants the descriptors for device enumeration.
+There are several other requests that configure the device address and communicate the device status to the
+host.
+The USB-HID class specific requests are used to configure the HID parameters of the device.
+In `if(wIndex == 0)`:
+The request `GET_REPORT` is the host manually requesting the keyboard status.
+The request `GET_IDLE` is the host requesting the time before key-repeat reports are sent.
+The request `GET_PROTOCOL` doesn't do anything, because our keyboard only has one protocol.
+The `SET` requests do not do anything on our device, although they must be implemented. (Except for `SET_IDLE`)
+The device can now function normally. The reports of the keyboard status are taken care of by the actual
+matrix code calling the send functions, or by the idle handler.
+In the ISR `USB_COM_vect`:
+The SOFE interrupt occurs once every ms. If the keyboard state hasn't changed in the last interval set by 
+`SET_IDLE`, we are required to resend the same report so that the host can register key repeats.
+#### Keyboard
+Because the keyboard doesn't have the normal number of keys, the keyboard must have key layers controlled
+with the raise and lower keys. These keys can't be treated as normal keys, and do not translate into keypresses.
+These keys are hardwired to shift the key layer. 
