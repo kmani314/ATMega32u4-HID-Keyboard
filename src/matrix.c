@@ -35,18 +35,25 @@ void do_matrix_scan() {
 				switch(j) {
 					case(0):
 						DNUM = 0;
+						break;
 					case(1):
 						DNUM = 6;
+						break;
 					case(2):
 						DNUM = 4;
+						break;
 					case(3):
 						DNUM = 5;
+						break;
 					case(4):
 						DNUM = 3;
+						break;
 					case(5):
 						DNUM = 2;
+						break;
 					case(6):
 						DNUM = 1;
+						break;
 				}
 				
 				PORTD &= ~(1 << DNUM); // Set it low to read from the row
@@ -56,7 +63,7 @@ void do_matrix_scan() {
 				PORTF &= ~(1 << FNUM);
 			}
 			
-			if(!(PINB & (1 << (i + B_OFFSET)))) { // state change 
+			if((PINB & (1 << (i + B_OFFSET)))) { // state change 
 				PORTC |= (1 << 6);
 				send_keypress(layout[layout_num][i][j], 0);
 			}
