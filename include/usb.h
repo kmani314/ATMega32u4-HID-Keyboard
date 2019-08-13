@@ -7,11 +7,8 @@ usb.h
 #include <stdint.h>
 
 static volatile uint8_t usb_config_status = 0;
-static uint8_t keyboard_idle_value = 125; // HID Idle setting, how often the device resends unchanging reports, we are using a scaling of 4 because of the register size
-static uint8_t current_idle = 0; // Counter that updates based on how many SOFE interrupts have occurred
-static uint8_t this_interrupt = 0; // This is not the best way to do it, but it is much more readable than the alternative
-static uint8_t keyboard_pressed_keys[6] = {0, 0, 0, 0, 0, 0};
-static uint8_t keyboard_modifier = 0;
+extern uint8_t keyboard_pressed_keys[6];
+extern uint8_t keyboard_modifier;
 static uint8_t keyboard_protocol = 0; // This doesn't matter at all, we just need it for supporting some useless HID requests
 static uint8_t keyboard_leds; // You don't need to use this if you don't want to or don't have the hardware
 

@@ -14,6 +14,13 @@ USB Controller initialization, device setup, and HID interrupt routines
 	Specification: USB 2.0 (April 27, 2000) Chapter 9 Table 9-5
 
 */
+uint8_t keyboard_pressed_keys[6] = {0, 0, 0, 0, 0, 0};
+uint8_t keyboard_modifier = 0;
+
+static uint8_t keyboard_idle_value = 125; // HID Idle setting, how often the device resends unchanging reports, we are using a scaling of 4 because of the register size
+static uint8_t current_idle = 0; // Counter that updates based on how many SOFE interrupts have occurred
+static uint8_t this_interrupt = 0; // This is not the best way to do it, but it is much more readable than the alternative
+
 static const uint8_t device_descriptor[] PROGMEM = { // Stored in PROGMEM (Program Memory) Flash, freeing up some SRAM where variables are usually stored
 	18, // bLength - The total size of the descriptor 
 	1, // bDescriptorType - The type of descriptor - 1 is device
@@ -109,7 +116,7 @@ static const uint8_t configuration_descriptor[] PROGMEM = {
 	KEYBOARD_ENDPOINT_NUM | 0x80, // Set keyboard endpoint to IN endpoint, refer to table
 	0x03, // bmAttributes - Set endpoint to interrupt
 	8, 0, // wMaxPacketSize - The size of the keyboard banks
-	0x01 // wInterval - Poll for new data 1000/s, or once every ms
+	0x05 // wInterval - Poll for new data 1000/s, or once every ms
 };
 
 int usb_init() {
@@ -149,7 +156,7 @@ int usb_send() {
 	cli();	
 	UENUM = KEYBOARD_ENDPOINT_NUM;
 	
-	while(!(UEINTX & (1 << RWAL))); // Wait for banks to be ready
+//	while(!(UEINTX & (1 << RWAL))); // Wait for banks to be ready
 	UEDATX = keyboard_modifier;
 	UEDATX = 0;	
 	for(int i = 0; i < 6; i++) {
@@ -189,7 +196,6 @@ ISR(USB_GEN_vect) {
 		UEIENX = (1 << RXSTPE); // Re-enable the RXSPTE (Receive Setup Packet) Interrupt
 		return;	
 	}
-
 	if((udint_temp & (1 << SOFI)) && usb_config_status) { // Check for Start Of Frame Interrupt and correct usb configuration, send keypress if a keypress event has not been sent through usb_send
 		this_interrupt++;
 		if(keyboard_idle_value && (this_interrupt & 3) == 0) { // Scaling by four, trying to save memory

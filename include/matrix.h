@@ -9,5 +9,5 @@
 
 
 int matrix_init();
-void do_matrix_scan();
+int do_matrix_scan();
 #endif

@@ -2,9 +2,12 @@
 #define KEYS_H
 
 // These are custom layer shift keys, they don't actually cause a keypress to be sent
-#define KEY_LAYER_UP 0xfc
-#define KEY_LAYER_DOWN 0xfd
-#define KEY_QUICK_FN 0xfe
+#define KEY_MOD_MACRO 0x0100
+#define KEY_LS_MACRO 0x1000
+
+#define KEY_LAYER_UP 0x01
+#define KEY_LAYER_DOWN 0x04
+#define KEY_QUICK_FN 0x02
 
 // I didn't write these defines because it's a waste of time, it's from here: https://gist.github.com/MightyPork/6da26e382a7ad91b5496ee55fdc73db2 
 
