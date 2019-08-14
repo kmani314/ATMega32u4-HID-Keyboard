@@ -9,8 +9,11 @@ usb.h
 static volatile uint8_t usb_config_status = 0;
 extern uint8_t keyboard_pressed_keys[6];
 extern uint8_t keyboard_modifier;
-static uint8_t keyboard_protocol = 0; // This doesn't matter at all, we just need it for supporting some useless HID requests
-static uint8_t keyboard_leds; // You don't need to use this if you don't want to or don't have the hardware
+static uint8_t keyboard_protocol =
+    0;  // This doesn't matter at all, we just need it for supporting some
+        // useless HID requests
+static uint8_t keyboard_leds;  // You don't need to use this if you don't want
+                               // to or don't have the hardware
 
 int usb_init();
 bool get_usb_config_status();
@@ -27,14 +30,17 @@ int send_keypress(uint8_t, uint8_t);
 #define GET_INTERFACE 0x0A
 #define SET_INTERFACE 0x0B
 
-#define idVendor 0x258a // Atmel Corp.
-#define idProduct 0x1006 // ATMega32u4 DFU Bootloader (This isn't a real product so I don't have legitimate IDs)
-#define KEYBOARD_ENDPOINT_NUM 3 // The second endpoint is the HID endpoint
+#define idVendor 0x258a  // Atmel Corp.
+#define idProduct \
+  0x1006  // ATMega32u4 DFU Bootloader (This isn't a real product so I don't
+          // have legitimate IDs)
+#define KEYBOARD_ENDPOINT_NUM 3  // The second endpoint is the HID endpoint
 
 #define CONFIG_SIZE 34
 #define HID_OFFSET 18
 
-// HID Class-specific request codes - refer to HID Class Specification Chapter 7.2 - Remarks
+// HID Class-specific request codes - refer to HID Class Specification
+// Chapter 7.2 - Remarks
 
 #define GET_REPORT 0x01
 #define GET_IDLE 0x02
