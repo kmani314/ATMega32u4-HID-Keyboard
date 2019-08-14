@@ -79,12 +79,15 @@ int do_matrix_scan() {
 						
 					} else if(key & KEY_LS_MACRO) {
 						key &= ~(KEY_LS_MACRO);
-						layout_num |= key;
-						do_layer_led();
+						if((layout_num | key) <= (NUM_LAYERS - 1)) {
+							layout_num |= key;
+							do_layer_led();
+
+						}
 					} else {
-						for(int i = 0; i < 6; i ++) {
-							if(!keyboard_pressed_keys[i]) {
-								keyboard_pressed_keys[i] = key;
+						for(int k = 0; k < 6; k++) {
+							if(!keyboard_pressed_keys[k]) {
+								keyboard_pressed_keys[k] = key;
 								break;
 							}
 						}
@@ -100,10 +103,13 @@ int do_matrix_scan() {
 						layout_num &= ~(key);
 						do_layer_led();
 					} else {
-						for(int i = 0; i < 6; i ++) {
-							if(keyboard_pressed_keys[i] == key) {
-								keyboard_pressed_keys[i] = 0;
-								break;
+						for(int k = 0; k < 6; k++) {
+							for(int l = 0; l < NUM_LAYERS; l++) { 
+								if(keyboard_pressed_keys[k] == layout[l][i][j]) {
+									keyboard_pressed_keys[k] = 0;
+									k = 6;
+									break;
+								}
 							}
 						}
 					}

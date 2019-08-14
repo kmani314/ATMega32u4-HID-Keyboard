@@ -1,6 +1,7 @@
 #ifndef LAYOUT_H
 #define LAYOUT_H
 #include "keys.h"
+#define NUM_LAYERS 3
 
 const uint16_t layout[3][4][12] = {
 	{ // Layer 0 - Standard layout
