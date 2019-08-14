@@ -27,8 +27,8 @@ int send_keypress(uint8_t, uint8_t);
 #define GET_INTERFACE 0x0A
 #define SET_INTERFACE 0x0B
 
-#define idVendor 0x16C0 // Atmel Corp.
-#define idProduct 0x047C // ATMega32u4 DFU Bootloader (This isn't a real product so I don't have legitimate IDs)
+#define idVendor 0x258a // Atmel Corp.
+#define idProduct 0x1006 // ATMega32u4 DFU Bootloader (This isn't a real product so I don't have legitimate IDs)
 #define KEYBOARD_ENDPOINT_NUM 3 // The second endpoint is the HID endpoint
 
 #define CONFIG_SIZE 34

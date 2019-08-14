@@ -5,6 +5,7 @@
 #include <util/delay.h>
 #include <avr/io.h>
 #include <avr/pgmspace.h>
+#include <stdbool.h>
 
 int layout_num = 0;
 
@@ -26,7 +27,7 @@ int matrix_init() {
 	PORTB = 0xFF; // Enable the Pull up resistors
 }
 void do_layer_led() {
-
+	PORTC = layout_num << 6;
 }
 int do_matrix_scan() {
 	bool key_state;
@@ -68,8 +69,8 @@ int do_matrix_scan() {
 				if(FNUM > 1) FNUM += 2; // Bits 2 and 3 do not exist on PORTF
 				PORTF &= ~(1 << FNUM);
 			}
-			
-			if((PINB & (1 << (i + B_OFFSET))) != state_layer[i][j]) { // state change 
+				
+			if((bool)(PINB & (1 << (i + B_OFFSET))) != state_layer[i][j]) { // state change 
 				if(!(PINB & (1 << (i + B_OFFSET)))) { // Low to High (Key Down)
 					uint16_t key = layout[layout_num][i][j];
 					if(key & KEY_MOD_MACRO) {
@@ -79,6 +80,7 @@ int do_matrix_scan() {
 					} else if(key & KEY_LS_MACRO) {
 						key &= ~(KEY_LS_MACRO);
 						layout_num |= key;
+						do_layer_led();
 					} else {
 						for(int i = 0; i < 6; i ++) {
 							if(!keyboard_pressed_keys[i]) {
@@ -96,6 +98,7 @@ int do_matrix_scan() {
 					} else if(key & KEY_LS_MACRO) {
 						key &= ~(KEY_LS_MACRO);
 						layout_num &= ~(key);
+						do_layer_led();
 					} else {
 						for(int i = 0; i < 6; i ++) {
 							if(keyboard_pressed_keys[i] == key) {
@@ -105,9 +108,7 @@ int do_matrix_scan() {
 						}
 					}
 				}
-				
 				usb_send();
-
 				state_layer[i][j] = (PINB & (1 << (i + B_OFFSET))); // save the state
 			
 			}

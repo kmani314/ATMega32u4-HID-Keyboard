@@ -17,7 +17,7 @@ USB Controller initialization, device setup, and HID interrupt routines
 uint8_t keyboard_pressed_keys[6] = {0, 0, 0, 0, 0, 0};
 uint8_t keyboard_modifier = 0;
 
-static uint8_t keyboard_idle_value = 125; // HID Idle setting, how often the device resends unchanging reports, we are using a scaling of 4 because of the register size
+static uint16_t keyboard_idle_value = 125; // HID Idle setting, how often the device resends unchanging reports, we are using a scaling of 4 because of the register size
 static uint8_t current_idle = 0; // Counter that updates based on how many SOFE interrupts have occurred
 static uint8_t this_interrupt = 0; // This is not the best way to do it, but it is much more readable than the alternative
 
@@ -213,7 +213,7 @@ ISR(USB_GEN_vect) {
 				}
 			}
 		}
-	}
+	}	
 }
 
 ISR(USB_COM_vect) {
@@ -351,14 +351,14 @@ ISR(USB_COM_vect) {
 					return;
 				}
 				if(bRequest == SET_IDLE) {
-					keyboard_idle_value = (wValue >> 8); // wValue is 16 bits, keyboard_idle_value is 8 bits
+					keyboard_idle_value = wValue; // 
 					current_idle = 0;
 
 					UEINTX &= ~(1 << TXINI); // Send ACK and clear TX bit
 					return;
 				}
 				if(bRequest == SET_PROTOCOL) { // This request is only mandatory for boot devices, and this is a boot device
-					keyboard_protocol = wValue; // Nobody cares what happens to this, arbitrary cast from 16 bit to 8 bit doesn't matter
+					keyboard_protocol = wValue >> 8; // Nobody cares what happens to this, arbitrary cast from 16 bit to 8 bit doesn't matter
 
 					UEINTX &= ~(1 << TXINI); // Send ACK and clear TX bit
 					return;
