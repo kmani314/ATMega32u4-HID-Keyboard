@@ -10,12 +10,9 @@ USB Controller initialization, device setup, and HID interrupt routines
 #include <util/delay.h>
 #include "avr/io.h"
 
-/*  Device Descriptor - The top level descriptor when enumerating a USB device`
-        Specification: USB 2.0 (April 27, 2000) Chapter 9 Table 9-5
 
-*/
-uint8_t keyboard_pressed_keys[6] = {0, 0, 0, 0, 0, 0};
-uint8_t keyboard_modifier = 0;
+volatile uint8_t keyboard_pressed_keys[6] = {0, 0, 0, 0, 0, 0};
+volatile uint8_t keyboard_modifier = 0;
 
 static uint16_t keyboard_idle_value =
     125;  // HID Idle setting, how often the device resends unchanging reports,
@@ -25,6 +22,11 @@ static uint8_t current_idle =
 static uint8_t this_interrupt =
     0;  // This is not the best way to do it, but it
         // is much more readable than the alternative
+
+/*  Device Descriptor - The top level descriptor when enumerating a USB device`
+        Specification: USB 2.0 (April 27, 2000) Chapter 9 Table 9-5
+
+*/
 
 static const uint8_t device_descriptor[] PROGMEM = {
     // Stored in PROGMEM (Program Memory) Flash, freeing up some SRAM where
@@ -221,19 +223,23 @@ int usb_init() {
 int send_keypress(uint8_t key, uint8_t mod) {
   keyboard_pressed_keys[0] = key;
   keyboard_modifier = mod;
-  if (usb_send() < 0) return -1;
+  if (usb_send() < 0)
+    return -1;
   keyboard_pressed_keys[0] = 0;
   keyboard_modifier = 0;
-  if (usb_send() < 0) return -1;
+  if (usb_send() < 0)
+    return -1;
   return 0;
 }
 
 int usb_send() {
-  if (!usb_config_status) return -1;  // Why are you even trying
+  if (!usb_config_status)
+    return -1;  // Why are you even trying
   cli();
   UENUM = KEYBOARD_ENDPOINT_NUM;
 
-  while(!(UEINTX & (1 << RWAL))); // Wait for banks to be ready
+  while (!(UEINTX & (1 << RWAL)))
+    ;  // Wait for banks to be ready
   UEDATX = keyboard_modifier;
   UEDATX = 0;
   for (int i = 0; i < 6; i++) {
@@ -246,7 +252,9 @@ int usb_send() {
   return 0;
 }
 
-bool get_usb_config_status() { return usb_config_status; }
+bool get_usb_config_status() {
+  return usb_config_status;
+}
 
 ISR(USB_GEN_vect) {
   uint8_t udint_temp = UDINT;
@@ -317,7 +325,7 @@ ISR(USB_COM_vect) {
                         // the packet because it also clears the endpoint banks
     if (bRequest == GET_DESCRIPTOR) {
       // The Host is requesting a descriptor to enumerate the device
-      uint8_t *descriptor;
+      uint8_t* descriptor;
       uint8_t descriptor_length;
 
       if (wValue == 0x0100) {  // Is the host requesting a device descriptor?

@@ -1,5 +1,5 @@
 /*
-main.cpp
+main.c
 */
 
 #define F_CPU 16000000
@@ -27,5 +27,5 @@ int main(int argc, char** argv) {
   PORTC &= ~((1 << 6) | (1 << 7));
 
   matrix_init();
-	while(1) do_matrix_scan();
+	while(1) do_matrix_scan(); // Scan the matrix
 }
