@@ -30,7 +30,7 @@ Top / Bottom (boards/Keyboard.brd):
 
 ![32u4 Top](img/top_32u4.png)
 
-![32u4 Bottom](bot_32u4.png)
+![32u4 Bottom](img/bot_32u4.png)
 
 The rest of the board is the scanning matrix. The rows and columns use up the majority of the I/O on the chip.
 The matrix is standard for a keyboard - one pin of each switch in a column is connected through a diode to every other one in the column. Then, the remaining pin in each switch is common with the row. I used through hole diodes because they are much easier to solder. The switches are standard mechanical keyboard switches, and the footprints are from here: https://github.com/mknyszek/gateron-eagle
@@ -40,7 +40,7 @@ Top / Bottom matrix (boards/Keyboard.brd):
 
 ![Matrix Top](img/top_matrix.png)
 
-![Matrix Bottom](bot_matrix.png)
+![Matrix Bottom](img/bot_matrix.png)
 
 ##### Board Assembly
 Assembling the board was straightforward except for the SMD components, specifically the TQFP ATMega32u4. It is really easy to bridge several pads very quickly, and completely ruin the chip. I soldered these by holding them in place and tacking down the corners so the chip didn’t move. I used a lot of flux, then with very little solder dragged the iron across the pins. The USB connector is also really difficult, I soldered the anchor pins and then the pins. It is really easy to bridge the pins with the ground enclosure. Using super glue after ensures that the connector doesn’t snap off when you unplug the cable.
