@@ -14,9 +14,9 @@ I used these for reference when coding:
 8. http://sdphca.ucsd.edu/lab_equip_manuals/usb_20.pdf
 
 Finished Board:
-[Finished Board](img/keyboard_top.jpg)
+![Finished Board](img/keyboard_top.jpg)
 
-#### Hardware
+### Hardware
 
 ##### Microcontroller
 The ATMega32u4 controls the scanning matrix and the USB interface. I chose it because of its hardware USB interface and because it has enough I/O pins to support the whole keyboard without needing any multiplexing. It also has enough flash and SRAM for storing layouts. The 32u4 on the keyboard runs at 16mHz from an external crystal oscillator with 22pF load capacitors. It is powered directly from the USB lines with filtering capacitors.
@@ -28,9 +28,9 @@ The portion of the board for the ATMega32u4 is fairly standard for this chip and
 
 Top / Bottom (boards/Keyboard.brd):
 
-[32u4 Top](img/top_32u4.png)
+![32u4 Top](img/top_32u4.png)
 
-[32u4 Bottom](bot_32u4.png)
+![32u4 Bottom](bot_32u4.png)
 
 The rest of the board is the scanning matrix. The rows and columns use up the majority of the I/O on the chip.
 The matrix is standard for a keyboard - one pin of each switch in a column is connected through a diode to every other one in the column. Then, the remaining pin in each switch is common with the row. I used through hole diodes because they are much easier to solder. The switches are standard mechanical keyboard switches, and the footprints are from here: https://github.com/mknyszek/gateron-eagle
@@ -38,14 +38,14 @@ To read the matrix, the row pins are pulled high through internal pull-up resist
 
 Top / Bottom matrix (boards/Keyboard.brd):
 
-[Matrix Top](img/top_matrix.png)
+![Matrix Top](img/top_matrix.png)
 
-[Matrix Bottom](bot_matrix.png)
+![Matrix Bottom](bot_matrix.png)
 
 ##### Board Assembly
 Assembling the board was straightforward except for the SMD components, specifically the TQFP ATMega32u4. It is really easy to bridge several pads very quickly, and completely ruin the chip. I soldered these by holding them in place and tacking down the corners so the chip didn’t move. I used a lot of flux, then with very little solder dragged the iron across the pins. The USB connector is also really difficult, I soldered the anchor pins and then the pins. It is really easy to bridge the pins with the ground enclosure. Using super glue after ensures that the connector doesn’t snap off when you unplug the cable.
 
-#### Code
+### Code
 ##### USB
 First, the USB controller of the 32u4 is initialized. This is handled in the function `usb_init()`. The PLL (Phase Locked Loop) is initialized, taking the external clock as input. It runs at 48mHz and acts as the USB clock. After the USB controller is initialized, the control endpoint is set up and will receive setup packets from the host. The setup packets, handled in the ISR `USB_gen_vect`, elicit responses from the keyboard based on the values of bmRequestType and bRequest, which determine the type of request. After the host has requested and received the USB descriptors, and the keyboard has correctly responded to HID-specific requests, the host can enumerate the device and use it as an input device.
 
