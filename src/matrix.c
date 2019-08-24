@@ -19,7 +19,7 @@ bool state_layer[NUM_ROWS][NUM_COLS] = {
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}};  // Key States to do state changes
 
-int matrix_init() {
+void matrix_init() {
   DDRD = 0xFF;   // Configure the first 7 rows as outputs
   DDRF = 0xFF;   // Configure the last 5 as outputs
   PORTF = 0xFF;  // The logic is inverted, being pulled low is a keypress
@@ -36,7 +36,7 @@ int matrix_init() {
 
 void do_layer_led() { PORTC = layout_num << 6; }
 
-int do_matrix_scan() {
+void do_matrix_scan() {
   bool key_state;
 
   for (int i = 0; i < NUM_ROWS; i++) {
