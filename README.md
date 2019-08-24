@@ -14,6 +14,7 @@ I used these for reference when coding:
 8. http://sdphca.ucsd.edu/lab_equip_manuals/usb_20.pdf
 
 Finished Board:
+
 ![Finished Board](img/keyboard_top.jpg)
 
 ### Hardware
