@@ -211,7 +211,6 @@ int usb_init() {
 
   UDCON = 0;  // FULL SPEED MODE
 
-  USBCON &= ~(1 << DETACH);  // Connect
   UDIEN |= (1 << EORSTE) |
            (1 << SOFE);  // Re-enable the EORSTE (End Of Reset) Interrupt so we
                          // know when we can configure the control endpoint
