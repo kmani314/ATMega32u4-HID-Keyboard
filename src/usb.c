@@ -209,7 +209,8 @@ int usb_init() {
       (1 << USBE) | (1 << OTGPADE);  // Enable USB Controller and USB power pads
   USBCON &= ~(1 << FRZCLK);          // Unfreeze the clock
 
-  UDCON = 0;  // FULL SPEED MODE
+  UDCON &= (1<<LSM);  // FULL SPEED MODE
+  UDCON &= (1<<DETACH);  // Attach USB Controller to the data bus
 
   UDIEN |= (1 << EORSTE) |
            (1 << SOFE);  // Re-enable the EORSTE (End Of Reset) Interrupt so we
